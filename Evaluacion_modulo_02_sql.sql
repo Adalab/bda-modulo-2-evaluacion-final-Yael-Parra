@@ -173,3 +173,31 @@ JOIN category ON category.category_id = film_category.category_id
 WHERE category.name = "Comedy" AND film.length >180;
 
 -- 25. BONUS: Encuentra todos los actores que han actuado juntos en al menos una película. La consulta debe mostrar el nombre y apellido de los actores y el número de películas en las que han actuado juntos.
+/*Para poder obtener la información sobre actores trabajando juntos y visto que no hay nada en la base de datos que los pueda relacionar entre sí, se deben de relacionar entre sí través de un operador de unión.
+Para identificar actores que han trabajado juntos, usamos un auto-join en la tabla film_actor con alias (ca1 y ca2) para comparar las relaciones de dos actores distintos en la misma película, utilizando el 
+film_id como punto de unión.. Visto que se va a usar un Join, tienen que provenir de distintas tablas por o que hay que hacer 2 versiones de las mismas. La columna que se usará como identificador para unirlos 
+será actor_id, para identificar las películas será film_id y para relacionar las tablas, se usará film_actor ya que contiene ambos identificadores. Las tablas se deben de duplicar para poder buscar pares de 
+actores y se les dará álías para poder separarlas e identificarlas al ser llamadas en los operadores de unión. Para evitar la duplicidad se usará el operador de comparación menor que <. Se hace una CTE y una 
+consulta principal para primero, poder crear una tabla y después, en la consulta principal, llamar al resultado de esa tabla. La consulta principal tiene los selectores que queremos visualizar, un grupaje
+ya que en el selector hay una función agregada y un filtro del grupaje para solo ver los que han trabajado juntos*/
+
+WITH combination_actors AS (                                                             -- CTE y nombre de CTE en donde se combinan los actores entre sí
+							SELECT 
+								a1.actor_id AS actor_id_1,                               -- actor id  (1)
+								a2.actor_id AS actor_id_2,                               -- actor id  (2)
+								CONCAT(a1.first_name, " ", a1.last_name) AS actor_name_1, -- concatenación para sacar nombre completo 1
+								CONCAT(a2.first_name, " ", a2.last_name) AS actor_name_2, -- concatenación para sacar nombre completo 2
+								ca1.film_id                                              -- Columna/identificador en donde los actores han trabajado juntos con su alias
+							FROM film_actor ca1                                          -- Proviene de la tabla film_actor que es la común
+							JOIN film_actor ca2 ON ca1.film_id = ca2.film_id             -- Unir actores en la misma película
+							JOIN actor a1 ON ca1.actor_id = a1.actor_id                  -- Relación actor 1
+							JOIN actor a2 ON ca2.actor_id = a2.actor_id                  -- Relación actor 2
+							WHERE ca1.actor_id < ca2.actor_id)                           -- Evitar duplicados
+SELECT                                               -- Consulta principal
+    ca.actor_name_1 AS "Actor 1 Name",               -- Seleccionar nombre completo de actor 1
+    ca.actor_name_2 AS "Actor 2 Name",               -- Seleccionar nombre completo de actor 2
+    COUNT(ca.film_id) AS "Qty of Movies Together"    -- Contar películas en las que han trabajado juntos
+FROM combination_actors ca                           -- Llama a la tabla en donde se encuentran los selectores y para no confundirla con la CTE (el nombre sería el mismo), se le da un alias
+GROUP BY ca.actor_id_1, ca.actor_id_2                -- Puesto que en los selectores contamos con una función agregada, se agrupan las filas con la cláusula group by
+HAVING COUNT(ca.film_id) > 0;                        -- Para poder realizar el filtro del resultado, se usa la cláusula having y es superior a 0 ya que sólo queremos ver los que han actuado juntos almenos 1 vez
+
